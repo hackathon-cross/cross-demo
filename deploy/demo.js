@@ -13,7 +13,7 @@ const simpleUdtHash = blake2b(simpleUdtBinary);
 // const crosschainTypescript = fs.readFileSync("./build/cross_chain_type.js");
 const crosschainTypescript = fs.readFileSync("./deps/always_success");
 const crosschainTypescriptHash = blake2b(crosschainTypescript);
-const crosschainLockscript = fs.readFileSync("./deps/always_success");
+const crosschainLockscript = fs.readFileSync("./deps/crosschain_lockscript");
 const crosschainLockscriptHash = blake2b(crosschainLockscript);
 
 const privateKey =

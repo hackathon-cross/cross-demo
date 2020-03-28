@@ -13,6 +13,9 @@ $ ckb init -c dev -C ckb-data --ba-arg 0x5a7487f529b8b8fd4d4a57c12dc0c70f7958a19
 $ ckb run -C ckb-data
 $ ckb miner -C ckb-data
 
-# run demo
+# run simple scripts demo
 $ node deploy/demo.js
+
+# run full demo with relayer and muta
+
 ```

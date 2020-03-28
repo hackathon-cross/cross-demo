@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "demo": "node deploy/demo.js",
     "build": "npx webpack",
     "rebuild-schema": "moleculec --language - --format json --schema-file ./schema/blockchain.mol > ./schema/blockchain.json && npx moleculec-js -ns ./schema/blockchain.json > ./schema/blockchain-combined.json"
   },
