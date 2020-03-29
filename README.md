@@ -19,5 +19,11 @@ $ ckb miner -C ckb-data
 $ node deploy/demo.js
 
 # run full demo with relayer and muta
+$ git clone https://github.com/hackathon-cross/relayer.git
+$ cd relayer
+$ npm i
 
+# config config.ts
+
+$ npm start
 ```
