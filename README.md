@@ -1,5 +1,7 @@
 # cross-demo
 
+PPT: <https://docs.google.com/presentation/d/1YAdEGcESZK4lj6z8G0wO3fvhNFsdqP2CxEuqzw1D-9o/edit#slide=id.p>
+
 ## quick start
 
 ```
