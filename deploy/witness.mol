@@ -1,0 +1,25 @@
+array Uint64 [byte; 8];
+array Byte32 [byte; 32];
+array Signature [byte; 65];
+vector EventsVec <Event>;
+vector MessageVec <Message>;
+
+struct Event {
+ asset_id: Byte32,
+ ckb_receiver: Byte32,
+ amount: Uint64,
+}
+
+struct Header {
+ height: Uint64,
+}
+
+table Message {
+ header: Header,
+ events: EventsVec,
+}
+
+table CrosschainWitness {
+ messages:  MessageVec,
+ proof:  Signature,
+}

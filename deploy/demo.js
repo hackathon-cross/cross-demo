@@ -5,13 +5,21 @@ const utils = require("@nervosnetwork/ckb-sdk-utils");
 const process = require("process");
 const fs = require("fs");
 const _ = require("lodash");
+const {SerializeCrosschainWitness} = require("./witness_schema_new")
+const CellCapacity = 20000000000000n;
+
 
 // const duktapeBinary = fs.readFileSync("./deps/load0");
 // const duktapeHash = blake2b(duktapeBinary);
 const simpleUdtBinary = fs.readFileSync("./deps/simple_udt");
 const simpleUdtHash = blake2b(simpleUdtBinary);
+
 // const crosschainTypescript = fs.readFileSync("./build/cross_chain_type.js");
 const crosschainTypescript = fs.readFileSync("./deps/always_success");
+// const crosschainTypescript = fs.readFileSync("~/CLionProjects/crosschain-scripts/build/test_type");
+// const testTypeBinary = fs.readFileSync("~/CLionProjects/crosschain-scripts/build/test_type");
+// const testTypeBinaryHash = blake2b( testTypeBinary )
+
 const crosschainTypescriptHash = blake2b(crosschainTypescript);
 const crosschainLockscript = fs.readFileSync("./deps/crosschain_lockscript");
 const crosschainLockscriptHash = blake2b(crosschainLockscript);
@@ -22,6 +30,7 @@ const bPrivKey =
   "0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2b0";
 const nodeUrl = "http://127.0.0.1:8114/";
 const configPath = "./deploy/config.json";
+const relayerConfigPath = "~/WebstormProjects/relayer/config.json";
 const config = JSON.parse(fs.readFileSync(configPath));
 const fee = 100000000n;
 
@@ -138,6 +147,19 @@ async function deploy(code_list) {
   console.log(`deployTxHash: ${txHash}`);
 }
 
+async function storeConfigToRelayer(config) {
+ const relayerConfig = JSON.parse(fs.readFileSync(relayerConfigPath));
+
+ relayerConfig.deployTxHash = config.deployTxHash;
+
+ relayerConfig.ckb.output = {
+   lock: config.crosschainLockscript,
+   type: config.crosschainTypescript,
+ }
+
+  fs.writeFileSync(relayerConfigPath, JSON.stringify(relayerConfig, null, 2));
+}
+
 async function createCrosschainCell() {
   const secp256k1Dep = await ckb.loadSecp256k1Dep();
 
@@ -191,6 +213,8 @@ async function createCrosschainCell() {
     hashType: "data",
     args: utils.scriptToHash(config.crosschainTypescript)
   };
+
+  await storeConfigToRelayer(config)
   const transaction = {
     version: "0x0",
     cellDeps: [
@@ -425,38 +449,36 @@ async function unlockCrosschainContract() {
   const secp256k1Dep = await ckb.loadSecp256k1Dep();
   // read from the crosschain cell data
   const fee_rate = 100000n;
+
   const witness = {
     messages: [
       {
         header: {
-          height: 100,
-          validatorVersion: "",
-          validators: []
+          height: 100n
         },
         events: [
           {
             asset_id:
-              "0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947",
+                "0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947",
             ckb_receiver:
-              "0x0000000000000000000000000000000000000000000000000000000000000001",
-            amount: 10000,
-            nonce: 1
+                "0x0000000000000000000000000000000000000000000000000000000000000001",
+            amount: 10000n,
           },
           {
             asset_id:
-              "0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947",
+                "0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947",
             ckb_receiver:
-              "0x0000000000000000000000000000000000000000000000000000000000000002",
-            amount: 20000,
-            nonce: 2
+                "0x0000000000000000000000000000000000000000000000000000000000000002",
+            amount: 20000n,
           }
-        ],
-        proof: ""
+        ]
       }
     ],
-    fee_receiver:
-      "0x0000000000000000000000000000000000000000000000000000000000000003"
+    proof: "0x" + "00".repeat(64) + "10"
   };
+  const bytes = SerializeCrosschainWitness(witness)
+  const uint8Array = new Uint8Array(bytes)
+
   const balance = new Object();
   const assetBalanceSum = {};
   const blocks = witness.messages;
@@ -628,7 +650,9 @@ async function unlockCrosschainContract() {
     inputs,
     outputs,
     // TODO: witness should encode to molecula
-    witnesses: [str2hex(JSON.stringify(witness))],
+    // witnesses: [str2hex(JSON.stringify(witness))],
+    witnesses: [utils.bytesToHex(uint8Array)],
+    // witnesses: ["0x61"],
     outputsData
     // outputsData: [
     //   utils.toHexInLittleEndian("0x" + Number(100000000).toString(16), 16)
@@ -636,7 +660,7 @@ async function unlockCrosschainContract() {
   };
   // console.log(JSON.stringify(transaction, null, 2));
   const txHash = await ckb.rpc.sendTransaction(transaction, "passthrough");
-  console.log(`lockToCrosschain hash: ${txHash}`);
+  console.log(`unlockToCrosschain hash: ${txHash}`);
   config.unlockTxHash = txHash;
   return txHash;
 }
@@ -660,6 +684,116 @@ async function waitForTx(txHash) {
   }
 }
 
+async function testUnlockCrosschainContract() {
+  const secp256k1Dep = await ckb.loadSecp256k1Dep();
+  const publicKey = ckb.utils.privateKeyToPublicKey(privateKey);
+  const publicKeyHash = `0x${ckb.utils.blake160(publicKey, "hex")}`;
+  const lockScript = {
+    hashType: secp256k1Dep.hashType,
+    codeHash: secp256k1Dep.codeHash,
+    args: publicKeyHash
+  };
+  const lockHash = ckb.utils.scriptToHash(lockScript);
+
+  const unspentCells = await ckb.loadCells({
+    lockHash
+  });
+  const totalCapacity = unspentCells.reduce(
+      (sum, cell) => sum + BigInt(cell.capacity),
+      BigInt(0)
+  );
+
+  config.testTypescript = {
+    codeHash: utils.bytesToHex( testTypeBinaryHash ),
+    hashType: "data",
+    args: "0x"
+  }
+  const outputs = [
+    {
+      lock: lockScript,
+      type: config.testTypescript,
+      capacity: "0x" + CellCapacity.toString(16)
+    }
+  ]
+  outputs.push({
+    lock: lockScript,
+    type: null,
+    capacity: "0x" + (totalCapacity - CellCapacity - fee).toString(16)
+  });
+
+  const outputsData = ["0x"]
+  outputsData.push("0x");
+
+  const witness = {
+    messages: [
+      {
+        header: {
+          height: 100n,
+          validator_version: "",
+          validators: []
+        },
+        events: [
+          {
+            asset_id:
+                "0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947",
+            ckb_receiver:
+                "0x0000000000000000000000000000000000000000000000000000000000000001",
+            amount: 10000n,
+            nonce: 1n
+          },
+          {
+            asset_id:
+                "0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947",
+            ckb_receiver:
+                "0x0000000000000000000000000000000000000000000000000000000000000002",
+            amount: 20000n,
+            nonce: 2n
+          }
+        ],
+        proof: "0x" + "00".repeat(65)
+      }
+    ],
+    fee_receiver:
+        "0x0000000000000000000000000000000000000000000000000000000000000003"
+  };
+
+  const bytes = SerializeCrosschainWitness(witness)
+  const uint8Array = new Uint8Array(bytes)
+
+
+  const transaction = {
+    version: "0x0",
+    cellDeps: [
+      {
+        outPoint: secp256k1Dep.outPoint,
+        depType: "depGroup"
+      },
+      {
+        outPoint: {
+          txHash: config.deployTxHash,
+          index: "0x0"
+        },
+        depType: "code"
+      }
+    ],
+    headerDeps: [],
+    inputs: unspentCells.map(cell => ({
+      previousOutput: cell.outPoint,
+      since: "0x0"
+    })),
+    outputs,
+    witnesses: [ utils.bytesToHex(uint8Array) ],
+    outputsData
+  };
+
+  const txHash = await ckb.rpc.sendTransaction(
+      transaction,
+      "passthrough"
+  );
+  config.testTxHash = txHash;
+  console.log(`testTxHash: ${txHash}`);
+}
+
 async function main() {
   const binaryList = [
     simpleUdtBinary,
@@ -674,10 +808,9 @@ async function main() {
   await waitForTx(config.issueTxHash);
   await lockToCrosschainContract();
   await waitForTx(config.lockToCrosschainTxHash);
-  await unlockCrosschainContract();
-  await waitForTx(config.unlockTxHash);
-  // const tx = await ckb.rpc.getTransaction(config.unlockTxHash);
-  // console.log(JSON.stringify(tx, null, 2));
+  // await unlockCrosschainContract();
+  // await waitForTx(config.unlockTxHash);
+
 }
 
 main();
