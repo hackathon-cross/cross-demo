@@ -398,4 +398,4 @@ function SerializeCrosschainWitness(value) {
   return serializeTable(buffers);
 }
 
-module.exports = { SerializeCrosschainWitness }
+module.exports = { SerializeMessageVec, SerializeCrosschainWitness }

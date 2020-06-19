@@ -2,10 +2,13 @@
 
 const CKB = require("@nervosnetwork/ckb-sdk-core").default;
 const utils = require("@nervosnetwork/ckb-sdk-utils");
+const ECPair = require("@nervosnetwork/ckb-sdk-utils/lib/ecpair");
+
+
 const process = require("process");
 const fs = require("fs");
 const _ = require("lodash");
-const {SerializeCrosschainWitness} = require("./witness_schema_new")
+const {SerializeCrosschainWitness, SerializeMessageVec} = require("./witness_schema_new")
 const CellCapacity = 20000000000000n;
 
 // const duktapeBinary = fs.readFileSync("./deps/load0");
@@ -475,8 +478,11 @@ async function unlockCrosschainContract() {
     ],
     proof: "0x" + "00".repeat(64) + "10"
   };
-  const bytes = SerializeCrosschainWitness(witness)
-  const uint8Array = new Uint8Array(bytes)
+
+  const msg = SerializeMessageVec( witness.messages )
+  const key = new ECPair.default(privateKey, {compressed: false})
+  witness.proof = key.signRecoverable(msg.Uint8Array)
+  const witness_bytes = SerializeCrosschainWitness(witness)
 
   const balance = new Object();
   const assetBalanceSum = {};
@@ -650,8 +656,8 @@ async function unlockCrosschainContract() {
     outputs,
     // TODO: witness should encode to molecula
     // witnesses: [str2hex(JSON.stringify(witness))],
-    witnesses: [utils.bytesToHex(uint8Array)],
-    // witnesses: ["0x61"],
+    // witnesses: [utils.bytesToHex(new Uint8Array(witness_bytes))],
+    witnesses: ["0x0061"],
     outputsData
     // outputsData: [
     //   utils.toHexInLittleEndian("0x" + Number(100000000).toString(16), 16)
@@ -807,8 +813,8 @@ async function main() {
   await waitForTx(config.issueTxHash);
   await lockToCrosschainContract();
   await waitForTx(config.lockToCrosschainTxHash);
-  // await unlockCrosschainContract();
-  // await waitForTx(config.unlockTxHash);
+  await unlockCrosschainContract();
+  await waitForTx(config.unlockTxHash);
 
 }
 
