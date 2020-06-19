@@ -8,7 +8,6 @@ const _ = require("lodash");
 const {SerializeCrosschainWitness} = require("./witness_schema_new")
 const CellCapacity = 20000000000000n;
 
-
 // const duktapeBinary = fs.readFileSync("./deps/load0");
 // const duktapeHash = blake2b(duktapeBinary);
 const simpleUdtBinary = fs.readFileSync("./deps/simple_udt");
@@ -30,7 +29,7 @@ const bPrivKey =
   "0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2b0";
 const nodeUrl = "http://127.0.0.1:8114/";
 const configPath = "./deploy/config.json";
-const relayerConfigPath = "~/WebstormProjects/relayer/config.json";
+const relayerConfigPath = "../relayer/config.json";
 const config = JSON.parse(fs.readFileSync(configPath));
 const fee = 100000000n;
 
